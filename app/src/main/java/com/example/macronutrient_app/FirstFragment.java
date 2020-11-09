@@ -5,12 +5,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,6 +30,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
 import org.apache.commons.io.IOUtils;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -96,10 +99,13 @@ public class FirstFragment extends Fragment {
                 }
                 else
                 {
+
                     Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-                    File file = new File(Environment.getExternalStorageDirectory(), "MyPhoto.jpg");
-                    Uri uri = FileProvider.getUriForFile(getContext(), getContext().getApplicationContext().getPackageName() + ".provider", file);
-                    cameraIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri);
+                    //File file = new File(Environment.getExternalStorageDirectory(), "MyPhoto.jpg");
+                    //Uri uri = FileProvider.getUriForFile(getContext(), getContext().getApplicationContext().getPackageName() + ".provider", file);
+                    //cameraIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri);
+                    //startActivityForResult(cameraIntent, CAMERA_REQUEST);
+                   // Intent intent = new Intent();
                     startActivityForResult(cameraIntent, CAMERA_REQUEST);
                 }
             }
@@ -131,20 +137,35 @@ public class FirstFragment extends Fragment {
 
         if (requestCode == CAMERA_REQUEST)
         {
-            Log.i("info100", getContext().getApplicationContext().getPackageName() + ".provider");
-       //     Bitmap photo = (Bitmap) data.getExtras().get("data");
-      //      imageView.setImageBitmap(photo);
+            Log.i("info100", Environment.getExternalStorageDirectory().getPath());
+//            Bitmap photo = (Bitmap) data.getExtras().get("data");
+//            imageView.setImageBitmap(photo);
 
             InputStream inputStream = null;
             try {
 //                inputStream = context.getContentResolver().openInputStream(data.getData());
 
-                File file = new File(Environment.getExternalStorageDirectory(), "MyPhoto.jpg");
-                //Uri of camera image
-                Uri uri = FileProvider.getUriForFile(getContext(), getContext().getApplicationContext().getPackageName() + ".provider", file);
+//                File file = new File(Environment.getExternalStorageDirectory(), "MyPhoto.jpg");
+////                String filePath = file.getPath();
+////                Bitmap bitmap = BitmapFactory.decodeFile(filePath);
+////                imageView.setImageBitmap(bitmap);
+//                //Uri of camera image
+//                Uri uri = FileProvider.getUriForFile(getContext(), "com.example.macronutrient_app" + ".provider", file);
+//
+//                inputStream = context.getContentResolver().openInputStream(uri);
+//                sendImage(inputStream);
 
-                inputStream = context.getContentResolver().openInputStream(uri);
+                Bitmap photo = (Bitmap) data.getExtras().get("data");
+                imageView.setImageBitmap(photo);
+
+                // CALL THIS METHOD TO GET THE URI FROM THE BITMAP
+                Uri tempUri = getImageUri(getContext().getApplicationContext(), photo);
+
+                // CALL THIS METHOD TO GET THE ACTUAL PATH
+                File finalFile = new File(getRealPathFromURI(tempUri));
+                inputStream = context.getContentResolver().openInputStream(tempUri);
                 sendImage(inputStream);
+               // System.out.println(mImageCaptureUri);
             }
             catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -177,6 +198,24 @@ public class FirstFragment extends Fragment {
         //                NavHostFragment.findNavController(FirstFragment.this)
 //                        .navigate(R.id.action_FirstFragment_to_SecondFragment);
     }
+    public Uri getImageUri(Context inContext, Bitmap inImage) {
+//        Bitmap OutImage = Bitmap.createScaledBitmap(inImage, 2000, 2000,true);
+        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
+        return Uri.parse(path);
+    }
+    public String getRealPathFromURI(Uri uri) {
+        String path = "";
+        if (getContext().getContentResolver() != null) {
+            Cursor cursor = getContext().getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null) {
+                cursor.moveToFirst();
+                int idx = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+                path = cursor.getString(idx);
+                cursor.close();
+            }
+        }
+        return path;
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public void sendImage(InputStream is) throws IOException, JSONException {
@@ -205,9 +244,9 @@ public class FirstFragment extends Fragment {
 
         OkHttpClient client = new OkHttpClient()
                 .newBuilder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .writeTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
                 .build();
         Request request = new Request.Builder()
                 .url(url)
